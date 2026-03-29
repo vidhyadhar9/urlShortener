@@ -1,10 +1,19 @@
 const Url = require('../models/Url');
+const { createClient } = require("redis");
+
+const redis = createClient();
+
+redis.on("error", (err) => console.log("Redis Error", err));
+
+(async () => {
+  await redis.connect();   // ⚠️ required
+})();
 
 // Function to generate a random short code
 const generateShortCode = () => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let shortCode = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     shortCode += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return shortCode;
@@ -35,9 +44,23 @@ const shortenUrl = async (req, res) => {
     }
 
     // Check if URL already exists
+    const urlObj = await redis.get(originalUrl)//need to send the data
+    console.log("redis data",urlObj);
+    if(urlObj!==null){
+        const value = JSON.parse(urlObj);
+        return res.status(200).json({
+        message: 'URL already shortened',
+        originalUrl: value.originalUrl,
+        shortCode: value.shortCode,
+        shortUrl: `${process.env.BASE_URL || 'http://localhost:3000'}/api/urls/${value.shortCode}`,
+        createdAt: value.createdAt,
+      });
+    }
+
     let url = await Url.findOne({ originalUrl });
     
     if (url) {
+      redis.set(originalUrl, JSON.stringify(url));
       return res.status(200).json({
         message: 'URL already shortened',
         originalUrl: url.originalUrl,
@@ -59,8 +82,8 @@ const shortenUrl = async (req, res) => {
     url = new Url({
       originalUrl,
       shortCode,
-    });
-
+    }); 
+    redis.set(originalUrl, JSON.stringify(url));
     await url.save();
 
     res.status(201).json({
@@ -87,9 +110,11 @@ const redirectUrl = async (req, res) => {
       return res.status(404).json({ error: 'Short URL not found' });
     }
 
-    // Increment click counter
-    url.clicks += 1;
-    await url.save();
+    // Instead of updating DB on every click, store pending click in Redis
+    const clickKey = `clicks:${shortCode}`;
+    const currentClicks = await redis.get(clickKey);
+    const newClickCount = currentClicks ? parseInt(currentClicks, 10) + 1 : 1;
+    await redis.set(clickKey, newClickCount.toString());
 
     // Redirect to original URL
     res.redirect(url.originalUrl);

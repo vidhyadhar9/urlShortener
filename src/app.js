@@ -2,11 +2,15 @@
 const express = require('express');
 const connectDb = require('./config/db');
 const urlRouter = require('./routers/urlRouter');
+const { initializeCronJob } = require('./services/cronService');
 require('dotenv').config();
 
 
 const app = express();
 connectDb();
+
+// Initialize cron job for syncing clicks
+initializeCronJob();
 
 // Middleware
 app.use(express.json());
