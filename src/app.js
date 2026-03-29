@@ -6,6 +6,21 @@ const { initializeCronJob } = require('./services/cronService');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Custom IPv6-safe keyGenerator
+const customKeyGenerator = (req, res) => {
+  let ip = req.ip || 
+           req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+           req.connection.remoteAddress ||
+           req.socket.remoteAddress ||
+           'unknown';
+  
+  if (ip && ip.includes('::ffff:')) {
+    ip = ip.split('::ffff:')[1];
+  }
+  
+  return ip;
+};
+
 
 const app = express();
 connectDb();
@@ -18,9 +33,8 @@ const globalLimiter = rateLimit({
   message: 'Too many requests from this IP address, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
-    return req.ip || req.connection.remoteAddress;
-  },
+  validate: false,
+  keyGenerator: customKeyGenerator,
 });
 
 
