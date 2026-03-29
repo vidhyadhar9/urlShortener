@@ -1,16 +1,14 @@
 const rateLimit = require('express-rate-limit');
 
-// Rate limiter for creating short URLs - 10 requests per hour per IP
 const createUrlLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // Limit each IP to 10 requests per windowMs
+  max: 10,
   message: {
     error: 'Too many URLs created from this IP address, please try again after 1 hour',
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, 
+  legacyHeaders: false, 
   keyGenerator: (req, res) => {
-    // Use IP address as the key
     return req.ip || req.connection.remoteAddress;
   },
   handler: (req, res) => {
@@ -22,10 +20,9 @@ const createUrlLimiter = rateLimit({
   },
 });
 
-// Rate limiter for redirects (clicking short URLs) - 100 requests per minute per IP
 const redirectLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100, 
   message: {
     error: 'Too many requests from this IP address, please try again later',
   },
@@ -43,10 +40,9 @@ const redirectLimiter = rateLimit({
   },
 });
 
-// Rate limiter for getting all URLs - 5 requests per minute per IP
 const getAllUrlsLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 5,
   message: {
     error: 'Too many requests to retrieve all URLs from this IP address',
   },

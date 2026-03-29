@@ -9,7 +9,6 @@ redis.on("error", (err) => console.log("Redis Error", err));
   await redis.connect();   // ⚠️ required
 })();
 
-// Function to generate a random short code
 const generateShortCode = () => {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let shortCode = '';
@@ -19,7 +18,6 @@ const generateShortCode = () => {
   return shortCode;
 };
 
-// Function to validate URL format
 const isValidUrl = (url) => {
   try {
     new URL(url);
@@ -33,17 +31,14 @@ const shortenUrl = async (req, res) => {
   try {
     const { originalUrl } = req.body;
 
-    // Validate input
     if (!originalUrl) {
       return res.status(400).json({ error: 'Original URL is required' });
     }
 
-    // Validate URL format
     if (!isValidUrl(originalUrl)) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Check if URL already exists
     const urlObj = await redis.get(originalUrl)//need to send the data
     console.log("redis data",urlObj);
     if(urlObj!==null){
@@ -70,7 +65,6 @@ const shortenUrl = async (req, res) => {
       });
     }
 
-    // Generate unique short code
     let shortCode;
     let exists = true;
     while (exists) {
@@ -78,7 +72,6 @@ const shortenUrl = async (req, res) => {
       exists = await Url.findOne({ shortCode });
     }
 
-    // Create new URL document
     url = new Url({
       originalUrl,
       shortCode,
@@ -103,20 +96,17 @@ const redirectUrl = async (req, res) => {
   try {
     const { shortCode } = req.params;
 
-    // Find the URL by short code
     const url = await Url.findOne({ shortCode });
 
     if (!url) {
       return res.status(404).json({ error: 'Short URL not found' });
     }
 
-    // Instead of updating DB on every click, store pending click in Redis
     const clickKey = `clicks:${shortCode}`;
     const currentClicks = await redis.get(clickKey);
     const newClickCount = currentClicks ? parseInt(currentClicks, 10) + 1 : 1;
     await redis.set(clickKey, newClickCount.toString());
 
-    // Redirect to original URL
     res.redirect(url.originalUrl);
   } catch (error) {
     console.error('Error in redirectUrl:', error);

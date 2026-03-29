@@ -10,7 +10,6 @@ redis.on("error", (err) => console.log("Redis Error", err));
   await redis.connect();
 })();
 
-// Initialize cron job to sync clicks from Redis to MongoDB every 10 minutes
 const initializeCronJob = () => {
 
   cron.schedule('*/5 * * * *', async () => {
@@ -24,7 +23,6 @@ const initializeCronJob = () => {
         return;
       }
 
-      // Batch update all URLs with pending clicks
       for (const key of keys) {
         const shortCode = key.replace('clicks:', '');
         const pendingClicks = await redis.get(key);
@@ -32,13 +30,11 @@ const initializeCronJob = () => {
         if (pendingClicks !== null) {
           const clicks = parseInt(pendingClicks, 10);
           
-          // Update MongoDB with accumulated clicks
           await Url.updateOne(
             { shortCode },
             { $inc: { clicks } }
           );
 
-          // Clear the Redis entry after successful update
           await redis.del(key);
           console.log(`✅ Updated ${shortCode} with ${clicks} clicks`);
         }
